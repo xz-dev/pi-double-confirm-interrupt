@@ -38,8 +38,9 @@
   },
   "scripts": {
     "test": "node --test src/*.test.ts",
+    "test:e2e": "node --test e2e/pi.e2e.test.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm run test && npm run typecheck"
+    "check": "npm run test && npm run test:e2e && npm run typecheck"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

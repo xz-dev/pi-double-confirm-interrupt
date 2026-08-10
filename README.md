@@ -40,6 +40,8 @@ npm run check
 pi -e .
 ```
 
+`npm run check` includes real Pi 0.84.1 E2E sessions driven through `tmux`. The suite uses an isolated agent directory and a local fake provider, so it needs `tmux` but no network credentials.
+
 ## License
 
 [MIT](LICENSE)
