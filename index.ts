@@ -9,7 +9,7 @@ import {
 } from "./src/confirmation.ts";
 
 const CONFIRM_WINDOW_MS = 1500;
-const STATUS_KEY = "double-confirm-interrupt";
+const WIDGET_KEY = "double-confirm-interrupt";
 
 class ConfirmingEditor extends CustomEditor {
 	private confirmation: ConfirmationState = emptyConfirmation();
@@ -19,20 +19,20 @@ class ConfirmingEditor extends CustomEditor {
 	private disposed = false;
 	private readonly isIdle: () => boolean;
 	private readonly appKeybindings: KeybindingsManager;
-	private readonly setStatus: (text?: string) => void;
+	private readonly setHint: (text?: string) => void;
 
 	constructor(
 		tui: TUI,
 		theme: EditorTheme,
 		keybindings: KeybindingsManager,
 		isIdle: () => boolean,
-		setStatus: (text?: string) => void,
+		setHint: (text?: string) => void,
 		options?: EditorOptions,
 	) {
 		super(tui, theme, keybindings, options);
 		this.isIdle = isIdle;
 		this.appKeybindings = keybindings;
-		this.setStatus = setStatus;
+		this.setHint = setHint;
 
 		Object.defineProperty(this, "onSubmit", {
 			configurable: true,
@@ -62,13 +62,13 @@ class ConfirmingEditor extends CustomEditor {
 		this.timer = undefined;
 	}
 
-	private clearStatus(): void {
+	private clearHint(): void {
 		this.clearTimer();
-		this.setStatus();
+		this.setHint();
 	}
 
 	private resetConfirmation(): void {
-		this.clearStatus();
+		this.clearHint();
 		this.confirmation = emptyConfirmation();
 	}
 
@@ -87,12 +87,12 @@ class ConfirmingEditor extends CustomEditor {
 		const result = requestConfirmation(this.confirmation, action, Date.now(), CONFIRM_WINDOW_MS);
 		this.confirmation = result.state;
 		if (result.confirmed) {
-			this.clearStatus();
+			this.clearHint();
 			return true;
 		}
 
 		if (this.timer) clearTimeout(this.timer);
-		this.setStatus(hint);
+		this.setHint(hint);
 		this.timer = setTimeout(() => {
 			if (!this.disposed) this.resetConfirmation();
 		}, CONFIRM_WINDOW_MS);
@@ -121,6 +121,12 @@ class ConfirmingEditor extends CustomEditor {
 			return;
 		}
 
+		if (this.appKeybindings.matches(data, "app.clear")) {
+			this.resetConfirmation();
+			this.setText("");
+			return;
+		}
+
 		if (this.appKeybindings.matches(data, "app.exit") && this.getText().length === 0) {
 			if (this.confirm("exit-key", "Press exit again to quit Pi")) super.handleInput(data);
 			return;
@@ -141,7 +147,7 @@ export default function doubleConfirmInterrupt(pi: ExtensionAPI): void {
 				theme,
 				keybindings,
 				() => ctx.isIdle(),
-				(text) => ctx.ui.setStatus(STATUS_KEY, text),
+				(text) => ctx.ui.setWidget(WIDGET_KEY, text ? [ctx.ui.theme.fg("warning", text)] : undefined),
 			);
 			return editor;
 		});
@@ -150,6 +156,6 @@ export default function doubleConfirmInterrupt(pi: ExtensionAPI): void {
 	pi.on("session_shutdown", (_event, ctx) => {
 		editor?.dispose();
 		editor = undefined;
-		ctx.ui.setStatus(STATUS_KEY, undefined);
+		ctx.ui.setWidget(WIDGET_KEY, undefined);
 	});
 }

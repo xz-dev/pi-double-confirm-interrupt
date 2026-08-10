@@ -75,6 +75,13 @@ function start(name: string, keybindings?: Record<string, string>): string {
 	return session;
 }
 
+function assertHintAboveEditor(output: string, hint: string): void {
+	const lines = output.split("\n");
+	const hintLine = lines.findIndex((line) => line.includes(hint));
+	const editorBorderLine = lines.findIndex((line, index) => index > hintLine && line.includes("─"));
+	assert.ok(hintLine >= 0 && editorBorderLine === hintLine + 1, `expected hint directly above editor\n${output}`);
+}
+
 function send(session: string, ...keys: string[]): void {
 	mustRun("tmux", ["send-keys", "-t", session, ...keys]);
 }
@@ -97,6 +104,7 @@ test("real Pi requires two rebound interrupts before aborting an active run", { 
 		waitFor(session, (output) => output.includes("E2E RUN ACTIVE"), "active agent run");
 		send(session, "C-x");
 		const armed = waitFor(session, (output) => output.includes("Press interrupt again"), "interrupt confirmation");
+		assertHintAboveEditor(armed, "Press interrupt again");
 		assert.doesNotMatch(armed, /E2E RUN ENDED|aborted/i);
 		send(session, "C-x");
 		waitFor(session, (output) => output.includes("E2E RUN ENDED"), "aborted agent run");
@@ -128,11 +136,33 @@ test("real Pi rebound interrupt only closes autocomplete before arming", { timeo
 	}
 });
 
+test("real Pi Ctrl-C clears the editor but repeated Ctrl-C never exits", { timeout: 30_000 }, () => {
+	const session = start("ctrl-c");
+	try {
+		const draft = "UNSENT CTRL-C DRAFT";
+		type(session, draft);
+		waitFor(session, (output) => output.includes(draft), "draft input");
+
+		send(session, "C-c");
+		waitFor(session, (output) => !output.includes(draft), "Ctrl-C editor clear");
+		send(session, "C-c");
+		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 750);
+		assert.equal(alive(session), true);
+
+		type(session, "hello");
+		send(session, "Enter");
+		waitFor(session, (output) => output.includes("E2E RUN ACTIVE"), "usable Pi after repeated Ctrl-C");
+	} finally {
+		cleanup();
+	}
+});
+
 test("real Pi requires two empty-editor Ctrl-D key presses before exit", { timeout: 30_000 }, () => {
 	const session = start("ctrl-d");
 	try {
 		send(session, "C-d");
-		waitFor(session, (output) => output.includes("Press exit again"), "exit confirmation");
+		const armed = waitFor(session, (output) => output.includes("Press exit again"), "exit confirmation");
+		assertHintAboveEditor(armed, "Press exit again");
 		assert.equal(alive(session), true);
 		send(session, "C-d");
 		waitFor(session, () => !alive(session), "Pi exit");
@@ -146,6 +176,7 @@ test("real Pi restores exact /quit once and exits on the second submission", { t
 	try {
 		send(session, "/quit", "Enter");
 		const armed = waitFor(session, (output) => output.includes("Submit /quit again"), "quit confirmation");
+		assertHintAboveEditor(armed, "Submit /quit again");
 		assert.match(armed, /\/quit/);
 		assert.equal(alive(session), true);
 		send(session, "Enter");

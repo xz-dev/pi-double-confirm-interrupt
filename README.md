@@ -9,6 +9,7 @@ A small [Pi](https://github.com/earendil-works/pi) extension that prevents accid
 - **Exit key:** empty-editor `app.exit` always requires two presses within 1.5 seconds, including the default Ctrl-D binding.
 - **Quit command:** submitting the exact built-in `/quit` command always requires submitting it twice within 1.5 seconds.
 - **Keybindings:** uses Pi's current `KeybindingsManager`; no physical Escape or Ctrl-D key is hard-coded.
+- **Warning:** the confirmation hint appears on its own warning-colored line directly above the input editor.
 
 Pi's existing idle double-interrupt action (`tree`, `fork`, or `none`) is unchanged.
 

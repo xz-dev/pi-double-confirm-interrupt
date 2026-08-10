@@ -17,15 +17,16 @@ function createEditor(isIdle: () => boolean) {
 	extension(pi);
 
 	let factory: ((tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) => any) | undefined;
-	const statuses: (string | undefined)[] = [];
+	const hints: (string | undefined)[] = [];
 	sessionStart?.({}, {
 		isIdle,
 		ui: {
+			theme: { fg: (_color: string, text: string) => text },
 			setEditorComponent(next: typeof factory) {
 				factory = next;
 			},
-			setStatus(_key: string, text: string | undefined) {
-				statuses.push(text);
+			setWidget(_key: string, lines: string[] | undefined) {
+				hints.push(lines?.[0]);
 			},
 		},
 	});
@@ -44,13 +45,14 @@ function createEditor(isIdle: () => boolean) {
 	const editor = factory!(tui, theme, keybindings);
 	return {
 		editor,
-		statuses,
-		shutdown: () => sessionShutdown?.({}, { ui: { setStatus: (_key: string, text: string | undefined) => statuses.push(text) } }),
+		hints,
+		shutdown: () =>
+			sessionShutdown?.({}, { ui: { setWidget: (_key: string, lines: string[] | undefined) => hints.push(lines?.[0]) } }),
 	};
 }
 
 test("autocomplete consumes rebound interrupt without arming confirmation", () => {
-	const { editor, statuses } = createEditor(() => false);
+	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;
 	editor.onEscape = () => interrupted++;
 	editor.setText("/abc");
@@ -71,15 +73,21 @@ test("autocomplete consumes rebound interrupt without arming confirmation", () =
 	assert.equal(editor.getText(), beforeText);
 	assert.equal(editor.getExpandedText(), beforeExpandedText);
 	assert.deepEqual(editor.getCursor(), beforeCursor);
-	assert.doesNotMatch(statuses.at(-1) ?? "", /interrupt again/);
+	assert.doesNotMatch(hints.at(-1) ?? "", /interrupt again/);
 
 	editor.handleInput("I");
 	assert.equal(interrupted, 0);
-	assert.match(statuses.at(-1) ?? "", /interrupt again/);
+	assert.match(hints.at(-1) ?? "", /interrupt again/);
+});
+
+test("confirmation hint uses a dedicated widget line above the editor", () => {
+	const { editor, hints } = createEditor(() => false);
+	editor.handleInput("I");
+	assert.equal(hints.at(-1), "Press interrupt again to stop the active run");
 });
 
 test("active interrupt and empty-editor exit require confirmation", () => {
-	const { editor, statuses } = createEditor(() => false);
+	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;
 	let exited = 0;
 	editor.onEscape = () => interrupted++;
@@ -87,13 +95,13 @@ test("active interrupt and empty-editor exit require confirmation", () => {
 
 	editor.handleInput("I");
 	assert.equal(interrupted, 0);
-	assert.match(statuses.at(-1) ?? "", /interrupt again/);
+	assert.match(hints.at(-1) ?? "", /interrupt again/);
 	editor.handleInput("I");
 	assert.equal(interrupted, 1);
 
 	editor.handleInput("\x04");
 	assert.equal(exited, 0);
-	assert.match(statuses.at(-1) ?? "", /exit again/);
+	assert.match(hints.at(-1) ?? "", /exit again/);
 	editor.handleInput("\x04");
 	assert.equal(exited, 1);
 });
@@ -127,7 +135,7 @@ test("idle interrupt stays immediate while exit remains guarded", () => {
 });
 
 test("unrelated input clears a pending confirmation", () => {
-	const { editor, statuses } = createEditor(() => false);
+	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;
 	editor.onEscape = () => interrupted++;
 
@@ -135,20 +143,20 @@ test("unrelated input clears a pending confirmation", () => {
 	editor.handleInput("a");
 	editor.handleInput("I");
 	assert.equal(interrupted, 0);
-	assert.match(statuses.at(-1) ?? "", /interrupt again/);
+	assert.match(hints.at(-1) ?? "", /interrupt again/);
 });
 
 test("shutdown cancels pending confirmation cleanup", async () => {
-	const { editor, statuses, shutdown } = createEditor(() => false);
+	const { editor, hints, shutdown } = createEditor(() => false);
 	editor.handleInput("I");
 	shutdown();
-	const countAfterShutdown = statuses.length;
+	const countAfterShutdown = hints.length;
 	await new Promise((resolve) => setTimeout(resolve, 1600));
-	assert.equal(statuses.length, countAfterShutdown);
+	assert.equal(hints.length, countAfterShutdown);
 });
 
 test("exact /quit submission is restored until confirmed", async () => {
-	const { editor, statuses } = createEditor(() => true);
+	const { editor, hints } = createEditor(() => true);
 	const submitted: string[] = [];
 	editor.onSubmit = (text: string) => submitted.push(text);
 	editor.setText("/quit");
@@ -157,7 +165,7 @@ test("exact /quit submission is restored until confirmed", async () => {
 	await Promise.resolve();
 	assert.deepEqual(submitted, []);
 	assert.equal(editor.getText(), "/quit");
-	assert.match(statuses.at(-1) ?? "", /Submit \/quit again/);
+	assert.match(hints.at(-1) ?? "", /Submit \/quit again/);
 
 	editor.handleInput("\r");
 	assert.deepEqual(submitted, ["/quit"]);
