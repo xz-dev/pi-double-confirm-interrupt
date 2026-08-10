@@ -33,6 +33,7 @@ function createEditor(isIdle: () => boolean) {
 
 	const matches = (data: string, action: string) =>
 		(data === "I" && action === "app.interrupt") ||
+		((data === "\x03" || data === "X") && action === "app.clear") ||
 		(data === "\x04" && (action === "app.exit" || action === "tui.editor.deleteCharForward")) ||
 		(data === "\r" && action === "tui.input.submit");
 	const keybindings = { matches, getKeys: () => [] } as unknown as KeybindingsManager;
@@ -104,6 +105,28 @@ test("active interrupt and empty-editor exit require confirmation", () => {
 	assert.match(hints.at(-1) ?? "", /exit again/);
 	editor.handleInput("\x04");
 	assert.equal(exited, 1);
+});
+
+test("Ctrl-C clears input without delegating to Pi's exit handler", () => {
+	const { editor } = createEditor(() => true);
+	let cleared = 0;
+	editor.onAction("app.clear", () => cleared++);
+	editor.setText("draft");
+
+	editor.handleInput("\x03");
+	editor.handleInput("\x03");
+	editor.handleInput("\x03");
+	assert.equal(editor.getText(), "");
+	assert.equal(cleared, 0);
+});
+
+test("non-Ctrl-C clear bindings keep Pi's native action", () => {
+	const { editor } = createEditor(() => true);
+	let cleared = 0;
+	editor.onAction("app.clear", () => cleared++);
+
+	editor.handleInput("X");
+	assert.equal(cleared, 1);
 });
 
 test("non-empty exit key preserves forward-delete behavior", () => {

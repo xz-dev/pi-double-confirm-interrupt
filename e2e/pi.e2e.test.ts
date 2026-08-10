@@ -145,7 +145,7 @@ test("real Pi Ctrl-C clears the editor but repeated Ctrl-C never exits", { timeo
 
 		send(session, "C-c");
 		waitFor(session, (output) => !output.includes(draft), "Ctrl-C editor clear");
-		send(session, "C-c");
+		send(session, "C-c", "C-c");
 		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 750);
 		assert.equal(alive(session), true);
 

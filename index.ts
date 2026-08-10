@@ -1,5 +1,5 @@
 import { CustomEditor, type ExtensionAPI, type KeybindingsManager } from "@earendil-works/pi-coding-agent";
-import type { EditorOptions, EditorTheme, TUI } from "@earendil-works/pi-tui";
+import { matchesKey, type EditorOptions, type EditorTheme, type TUI } from "@earendil-works/pi-tui";
 import {
 	emptyConfirmation,
 	isQuitCommand,
@@ -121,7 +121,7 @@ class ConfirmingEditor extends CustomEditor {
 			return;
 		}
 
-		if (this.appKeybindings.matches(data, "app.clear")) {
+		if (matchesKey(data, "ctrl+c") && this.appKeybindings.matches(data, "app.clear")) {
 			this.resetConfirmation();
 			this.setText("");
 			return;
