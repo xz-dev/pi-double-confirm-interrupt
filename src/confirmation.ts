@@ -1,4 +1,4 @@
-export type ConfirmationAction = "interrupt" | "quit-command";
+export type ConfirmationAction = "interrupt" | "exit-key" | "quit-command";
 
 export interface ConfirmationState {
 	action: ConfirmationAction | null;

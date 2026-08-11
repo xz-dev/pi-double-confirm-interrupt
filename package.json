@@ -1,7 +1,7 @@
 {
   "name": "pi-double-confirm-interrupt",
   "version": "0.1.0",
-  "description": "Require confirmation before interrupting an active Pi run or submitting /quit",
+  "description": "Require confirmation before interrupting or exiting an active Pi run",
   "type": "module",
   "license": "MIT",
   "author": "xz-dev",

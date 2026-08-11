@@ -157,8 +157,24 @@ test("real Pi Ctrl-C clears the editor but repeated Ctrl-C never exits", { timeo
 	}
 });
 
-test("real Pi exits on the first empty-editor Ctrl-D key press", { timeout: 30_000 }, () => {
-	const session = start("ctrl-d");
+test("real Pi requires two empty-editor Ctrl-D presses to exit during an active run", { timeout: 30_000 }, () => {
+	const session = start("ctrl-d-active");
+	try {
+		send(session, "hello", "Enter");
+		waitFor(session, (output) => output.includes("E2E RUN ACTIVE"), "active agent run");
+		send(session, "C-d");
+		const armed = waitFor(session, (output) => output.includes("Press exit again"), "exit confirmation");
+		assertHintAboveEditor(armed, "Press exit again");
+		assert.equal(alive(session), true);
+		send(session, "C-d");
+		waitFor(session, () => !alive(session), "Pi exit");
+	} finally {
+		cleanup();
+	}
+});
+
+test("real Pi exits on the first empty-editor Ctrl-D press while idle", { timeout: 30_000 }, () => {
+	const session = start("ctrl-d-idle");
 	try {
 		send(session, "C-d");
 		waitFor(session, () => !alive(session), "Pi exit");
@@ -167,10 +183,13 @@ test("real Pi exits on the first empty-editor Ctrl-D key press", { timeout: 30_0
 	}
 });
 
-test("real Pi restores exact /quit once and exits on the second submission", { timeout: 30_000 }, () => {
-	const session = start("quit");
+test("real Pi restores active /quit once and exits on the second submission", { timeout: 30_000 }, () => {
+	const session = start("quit-active");
 	try {
-		send(session, "/quit", "Enter");
+		send(session, "hello", "Enter");
+		waitFor(session, (output) => output.includes("E2E RUN ACTIVE"), "active agent run");
+		type(session, "/quit");
+		send(session, "Enter");
 		const armed = waitFor(session, (output) => output.includes("Submit /quit again"), "quit confirmation");
 		assertHintAboveEditor(armed, "Submit /quit again");
 		assert.match(armed, /\/quit/);

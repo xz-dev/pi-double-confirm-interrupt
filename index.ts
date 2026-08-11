@@ -40,12 +40,12 @@ class ConfirmingEditor extends CustomEditor {
 			set: (handler: ((text: string) => void) | undefined) => {
 				this.guardedSubmitHandler = handler
 					? (text) => {
-							if (!isQuitCommand(text) || this.restoringQuit) {
+							if (!isQuitCommand(text) || this.restoringQuit || this.isIdle()) {
 								this.restoringQuit = false;
 								handler(text);
 								return;
 							}
-							if (this.confirm("quit-command", "Submit /quit again to quit Pi")) {
+							if (this.confirm("quit-command", "Submit /quit again to stop the active run and quit Pi")) {
 								handler(text);
 								return;
 							}
@@ -124,6 +124,11 @@ class ConfirmingEditor extends CustomEditor {
 		if (matchesKey(data, "ctrl+c") && this.appKeybindings.matches(data, "app.clear")) {
 			this.resetConfirmation();
 			this.setText("");
+			return;
+		}
+
+		if (this.appKeybindings.matches(data, "app.exit") && this.getText().length === 0 && !this.isIdle()) {
+			if (this.confirm("exit-key", "Press exit again to stop the active run and quit Pi")) super.handleInput(data);
 			return;
 		}
 

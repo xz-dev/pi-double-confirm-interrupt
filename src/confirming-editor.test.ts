@@ -34,7 +34,8 @@ function createEditor(isIdle: () => boolean) {
 	const matches = (data: string, action: string) =>
 		(data === "I" && action === "app.interrupt") ||
 		((data === "\x03" || data === "X") && action === "app.clear") ||
-		(data === "\x04" && (action === "app.exit" || action === "tui.editor.deleteCharForward")) ||
+		((data === "\x04" || data === "E") && action === "app.exit") ||
+		(data === "\x04" && action === "tui.editor.deleteCharForward") ||
 		(data === "\r" && action === "tui.input.submit");
 	const keybindings = { matches, getKeys: () => [] } as unknown as KeybindingsManager;
 	const tui = { requestRender() {}, terminal: { columns: 80, rows: 24 } } as unknown as TUI;
@@ -87,7 +88,7 @@ test("confirmation hint uses a dedicated widget line above the editor", () => {
 	assert.equal(hints.at(-1), "Press interrupt again to stop the active run");
 });
 
-test("active interrupt requires confirmation while empty-editor exit stays immediate", () => {
+test("active interrupt and empty-editor exit require confirmation", () => {
 	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;
 	let exited = 0;
@@ -100,9 +101,11 @@ test("active interrupt requires confirmation while empty-editor exit stays immed
 	editor.handleInput("I");
 	assert.equal(interrupted, 1);
 
-	editor.handleInput("\x04");
+	editor.handleInput("E");
+	assert.equal(exited, 0);
+	assert.match(hints.at(-1) ?? "", /exit again/);
+	editor.handleInput("E");
 	assert.equal(exited, 1);
-	assert.doesNotMatch(hints.at(-1) ?? "", /exit again/);
 });
 
 test("Ctrl-C clears input without delegating to Pi's exit handler", () => {
@@ -174,8 +177,8 @@ test("shutdown cancels pending confirmation cleanup", async () => {
 	assert.equal(hints.length, countAfterShutdown);
 });
 
-test("exact /quit submission is restored until confirmed", async () => {
-	const { editor, hints } = createEditor(() => true);
+test("active exact /quit submission is restored until confirmed", async () => {
+	const { editor, hints } = createEditor(() => false);
 	const submitted: string[] = [];
 	editor.onSubmit = (text: string) => submitted.push(text);
 	editor.setText("/quit");
@@ -185,6 +188,16 @@ test("exact /quit submission is restored until confirmed", async () => {
 	assert.deepEqual(submitted, []);
 	assert.equal(editor.getText(), "/quit");
 	assert.match(hints.at(-1) ?? "", /Submit \/quit again/);
+
+	editor.handleInput("\r");
+	assert.deepEqual(submitted, ["/quit"]);
+});
+
+test("idle exact /quit submission stays immediate", () => {
+	const { editor } = createEditor(() => true);
+	const submitted: string[] = [];
+	editor.onSubmit = (text: string) => submitted.push(text);
+	editor.setText("/quit");
 
 	editor.handleInput("\r");
 	assert.deepEqual(submitted, ["/quit"]);
