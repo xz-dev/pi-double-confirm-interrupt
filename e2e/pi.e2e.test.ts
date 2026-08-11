@@ -157,13 +157,9 @@ test("real Pi Ctrl-C clears the editor but repeated Ctrl-C never exits", { timeo
 	}
 });
 
-test("real Pi requires two empty-editor Ctrl-D key presses before exit", { timeout: 30_000 }, () => {
+test("real Pi exits on the first empty-editor Ctrl-D key press", { timeout: 30_000 }, () => {
 	const session = start("ctrl-d");
 	try {
-		send(session, "C-d");
-		const armed = waitFor(session, (output) => output.includes("Press exit again"), "exit confirmation");
-		assertHintAboveEditor(armed, "Press exit again");
-		assert.equal(alive(session), true);
 		send(session, "C-d");
 		waitFor(session, () => !alive(session), "Pi exit");
 	} finally {

@@ -127,11 +127,6 @@ class ConfirmingEditor extends CustomEditor {
 			return;
 		}
 
-		if (this.appKeybindings.matches(data, "app.exit") && this.getText().length === 0) {
-			if (this.confirm("exit-key", "Press exit again to quit Pi")) super.handleInput(data);
-			return;
-		}
-
 		this.resetConfirmation();
 		super.handleInput(data);
 	}

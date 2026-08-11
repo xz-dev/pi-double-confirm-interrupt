@@ -15,11 +15,11 @@ test("requires the same action twice within the confirmation window", () => {
 
 test("expiry or a different action starts a fresh confirmation", () => {
 	const interrupt = requestConfirmation(emptyConfirmation(), "interrupt", 1000, WINDOW_MS);
-	const exit = requestConfirmation(interrupt.state, "exit-key", 1100, WINDOW_MS);
-	assert.equal(exit.confirmed, false);
-	assert.equal(exit.state.action, "exit-key");
+	const quit = requestConfirmation(interrupt.state, "quit-command", 1100, WINDOW_MS);
+	assert.equal(quit.confirmed, false);
+	assert.equal(quit.state.action, "quit-command");
 
-	const expired = requestConfirmation(exit.state, "exit-key", exit.state.expiresAt + 1, WINDOW_MS);
+	const expired = requestConfirmation(quit.state, "quit-command", quit.state.expiresAt + 1, WINDOW_MS);
 	assert.equal(expired.confirmed, false);
 });
 

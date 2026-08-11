@@ -87,7 +87,7 @@ test("confirmation hint uses a dedicated widget line above the editor", () => {
 	assert.equal(hints.at(-1), "Press interrupt again to stop the active run");
 });
 
-test("active interrupt and empty-editor exit require confirmation", () => {
+test("active interrupt requires confirmation while empty-editor exit stays immediate", () => {
 	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;
 	let exited = 0;
@@ -101,10 +101,8 @@ test("active interrupt and empty-editor exit require confirmation", () => {
 	assert.equal(interrupted, 1);
 
 	editor.handleInput("\x04");
-	assert.equal(exited, 0);
-	assert.match(hints.at(-1) ?? "", /exit again/);
-	editor.handleInput("\x04");
 	assert.equal(exited, 1);
+	assert.doesNotMatch(hints.at(-1) ?? "", /exit again/);
 });
 
 test("Ctrl-C clears input without delegating to Pi's exit handler", () => {
@@ -142,7 +140,7 @@ test("non-empty exit key preserves forward-delete behavior", () => {
 	assert.equal(editor.getText(), "a");
 });
 
-test("idle interrupt stays immediate while exit remains guarded", () => {
+test("idle interrupt and empty-editor exit stay immediate", () => {
 	const { editor } = createEditor(() => true);
 	let interrupted = 0;
 	let exited = 0;
@@ -151,8 +149,6 @@ test("idle interrupt stays immediate while exit remains guarded", () => {
 
 	editor.handleInput("I");
 	assert.equal(interrupted, 1);
-	editor.handleInput("\x04");
-	assert.equal(exited, 0);
 	editor.handleInput("\x04");
 	assert.equal(exited, 1);
 });
