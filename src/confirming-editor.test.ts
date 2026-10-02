@@ -53,6 +53,11 @@ function createEditor(isIdle: () => boolean) {
 	};
 }
 
+test("custom editor opts into Pi's embedded session status", () => {
+	const { editor } = createEditor(() => false);
+	assert.equal(editor.embedWorkingStatus, true);
+});
+
 test("autocomplete consumes rebound interrupt without arming confirmation", () => {
 	const { editor, hints } = createEditor(() => false);
 	let interrupted = 0;

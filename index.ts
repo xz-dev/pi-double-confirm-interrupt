@@ -12,6 +12,7 @@ const CONFIRM_WINDOW_MS = 1500;
 const WIDGET_KEY = "double-confirm-interrupt";
 
 class ConfirmingEditor extends CustomEditor {
+	public readonly embedWorkingStatus = true;
 	private confirmation: ConfirmationState = emptyConfirmation();
 	private guardedSubmitHandler: ((text: string) => void) | undefined;
 	private restoringQuit = false;
